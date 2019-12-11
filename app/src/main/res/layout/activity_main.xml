@@ -1,0 +1,44 @@
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#FFF"
+    android:orientation="vertical">
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true">
+
+        <TextView
+            android:id="@+id/message_tv"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:singleLine="false" />
+    </ScrollView>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="5dp"
+        android:paddingEnd="5dp">
+
+        <Spinner
+            android:id="@+id/spinner_view"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:spinnerMode="dropdown" />
+
+        <EditText
+            android:id="@+id/edit_text"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:hint="content"
+            android:singleLine="true"
+            android:textSize="18sp" />
+    </LinearLayout>
+</LinearLayout>
