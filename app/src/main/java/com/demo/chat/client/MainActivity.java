@@ -2,6 +2,9 @@ package com.demo.chat.client;
 
 import android.app.Activity;
 import android.os.Bundle;
+import android.text.TextUtils;
+import android.util.Log;
+import android.view.KeyEvent;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -9,32 +12,36 @@ import android.widget.EditText;
 import android.widget.Spinner;
 import android.widget.TextView;
 
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
-
-import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
-import java.net.Socket;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public class MainActivity extends Activity {
+public class MainActivity extends Activity implements SocketTask.OnSocketTaskListener, TextView.OnEditorActionListener {
     private TextView messageTv;
+    private TextView titleTv;
+
     private int selectPos;
-    private XFunc1<String> myListener;
-    private XFunc0 closeSocket;
+    private BufferedWriter bufferedWriter;
+    private ArrayAdapter<String> adapter;
+    private ExecutorService threadPool;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        threadPool = Executors.newFixedThreadPool(3);
+
         messageTv = findViewById(R.id.message_tv);
+        titleTv = findViewById(R.id.title_tv);
+
         Spinner spinnerView = findViewById(R.id.spinner_view);
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, R.layout.layout_spinner_item, new ArrayList<>());
+        adapter = new ArrayAdapter<>(this, R.layout.layout_spinner_item, new ArrayList<>());
         spinnerView.setAdapter(adapter);
         spinnerView.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
@@ -47,80 +54,73 @@ public class MainActivity extends Activity {
             }
         });
         EditText editText = findViewById(R.id.edit_text);
-        editText.setOnEditorActionListener((v, actionId, event) -> {
-            if (myListener != null) {
-                String param1 = v.getText() + "==>" + adapter.getItem(selectPos);
-                Executors.newSingleThreadExecutor().submit(() -> myListener.call(param1));
-            }
-            return false;
-        });
+        editText.setOnEditorActionListener(this);
 
-        Executors.newSingleThreadExecutor().submit(new SocketTask(
-                s -> {
-                    List<String> list = new Gson().fromJson(s, new TypeToken<List<String>>() {
-                    }.getType());
-                    runOnUiThread(() -> {
-                        adapter.clear();
-                        adapter.addAll(list);
-                    });
-                },
-                msg -> messageTv.append(msg),
-                printWriter -> {
-                    myListener = new XFunc1<String>() {
-                        @Override
-                        public void call(String x) {
-                            printWriter.println(x);
-                        }
-                    };
-
-                    closeSocket = new XFunc0() {
-                        @Override
-                        public void call() {
-                            printWriter.println("close");
-                        }
-                    };
-                }
-        ));
+        threadPool.submit(new SocketTask(this));
     }
 
     @Override
     protected void onDestroy() {
-        if (closeSocket != null) {
-            Executors.newSingleThreadExecutor().submit(() -> closeSocket.call());
+        if (bufferedWriter != null) {
+            threadPool.submit(() -> {
+                try {
+                    bufferedWriter.write("close");
+                    bufferedWriter.newLine();
+                    bufferedWriter.flush();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } finally {
+                    try {
+                        bufferedWriter.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            });
         }
         super.onDestroy();
     }
 
-    private static class SocketTask implements Runnable {
-        private XFunc1<String> msgCallback;
-        private XFunc1<String> listCallback;
-        private XFunc1<PrintWriter> printWriterXFunc1;
+    @Override
+    public void onReceivedMsg(String msg) {
+        Log.d("gxd", "MainActivity.onReceivedMsg->");
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                Log.d("gxd", "MainActivity.run-->" + msg);
+                messageTv.append(msg + "\n");
+            }
+        });
+    }
 
-        public SocketTask(XFunc1<String> listCallback, XFunc1<String> msgCallback, XFunc1<PrintWriter> printWriterXFunc1) {
-            this.listCallback = listCallback;
-            this.msgCallback = msgCallback;
-            this.printWriterXFunc1 = printWriterXFunc1;
-        }
+    @Override
+    public void onReceivedClientList(List<String> clientList) {
+        runOnUiThread(() -> {
+            adapter.clear();
+            adapter.addAll(clientList);
+            if (TextUtils.isEmpty(titleTv.getText())) {
+                titleTv.setText(clientList.get(clientList.size() - 1));
+            }
+        });
+    }
 
-        @Override
-        public void run() {
+    @Override
+    public void onReceivedOutputStream(OutputStream outputStream) {
+        bufferedWriter = new BufferedWriter(new OutputStreamWriter(outputStream));
+    }
+
+    @Override
+    public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+        threadPool.submit(() -> {
+            String param1 = v.getText() + "==>" + adapter.getItem(selectPos);
             try {
-                Socket socket = new Socket("192.168.43.19", 9999);
-
-                printWriterXFunc1.call(new PrintWriter(socket.getOutputStream(), true));
-                BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-                String s;
-                while ((s = bufferedReader.readLine()) != null) {
-                    if (s.contains("==>")) {
-                        msgCallback.call(s);
-                    } else {
-                        listCallback.call(s);
-                    }
-                }
+                bufferedWriter.write(param1);
+                bufferedWriter.newLine();
+                bufferedWriter.flush();
             } catch (IOException e) {
                 e.printStackTrace();
             }
-        }
+        });
+        return false;
     }
-
 }
