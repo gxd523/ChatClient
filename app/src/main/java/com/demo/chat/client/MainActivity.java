@@ -3,7 +3,6 @@ package com.demo.chat.client;
 import android.app.Activity;
 import android.os.Bundle;
 import android.text.TextUtils;
-import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.widget.AdapterView;
@@ -83,14 +82,7 @@ public class MainActivity extends Activity implements SocketTask.OnSocketTaskLis
 
     @Override
     public void onReceivedMsg(String msg) {
-        Log.d("gxd", "MainActivity.onReceivedMsg->");
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                Log.d("gxd", "MainActivity.run-->" + msg);
-                messageTv.append(msg + "\n");
-            }
-        });
+        runOnUiThread(() -> messageTv.append(msg + "\n"));
     }
 
     @Override

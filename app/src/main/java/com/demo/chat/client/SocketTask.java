@@ -1,7 +1,5 @@
 package com.demo.chat.client;
 
-import android.util.Log;
-
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
@@ -36,7 +34,6 @@ public class SocketTask implements Runnable {
 
             while ((length = inputStream.read(bytes)) != -1) {
                 String s = new String(bytes, 0, length, Charset.defaultCharset());
-                Log.d("gxd", "SocketTask.run-->" + s);
                 if (s.contains("==>")) {
                     onSocketTaskListener.onReceivedMsg(s);
                 } else {
@@ -48,7 +45,6 @@ public class SocketTask implements Runnable {
 //                BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream(), "utf-8"));
 //                String s;
 //                while ((s = bufferedReader.readLine()) != null) {
-//                    Log.d("gxd", "客户端接收到消息-->" + s);
 //                    if (s.contains("==>")) {
 //                        msgCallback.call(s);
 //                    } else {
