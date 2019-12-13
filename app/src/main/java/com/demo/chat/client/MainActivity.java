@@ -11,10 +11,8 @@ import android.widget.EditText;
 import android.widget.Spinner;
 import android.widget.TextView;
 
-import java.io.BufferedWriter;
-import java.io.IOException;
 import java.io.OutputStream;
-import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -25,7 +23,7 @@ public class MainActivity extends Activity implements SocketTask.OnSocketTaskLis
     private TextView titleTv;
 
     private int selectPos;
-    private BufferedWriter bufferedWriter;
+    private PrintWriter printWriter;
     private ArrayAdapter<String> adapter;
     private ExecutorService threadPool;
 
@@ -60,21 +58,10 @@ public class MainActivity extends Activity implements SocketTask.OnSocketTaskLis
 
     @Override
     protected void onDestroy() {
-        if (bufferedWriter != null) {
+        if (printWriter != null) {
             threadPool.submit(() -> {
-                try {
-                    bufferedWriter.write("close");
-                    bufferedWriter.newLine();
-                    bufferedWriter.flush();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                } finally {
-                    try {
-                        bufferedWriter.close();
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                }
+                printWriter.println("close");
+                printWriter.close();
             });
         }
         super.onDestroy();
@@ -98,20 +85,14 @@ public class MainActivity extends Activity implements SocketTask.OnSocketTaskLis
 
     @Override
     public void onReceivedOutputStream(OutputStream outputStream) {
-        bufferedWriter = new BufferedWriter(new OutputStreamWriter(outputStream));
+        printWriter = new PrintWriter(outputStream, true);
     }
 
     @Override
     public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
         threadPool.submit(() -> {
             String param1 = v.getText() + "==>" + adapter.getItem(selectPos);
-            try {
-                bufferedWriter.write(param1);
-                bufferedWriter.newLine();
-                bufferedWriter.flush();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+            printWriter.println(param1);
         });
         return false;
     }
